@@ -7,20 +7,38 @@ they download **once**.
 
 This is the image-editing counterpart to the
 [Diffusion](https://github.com/mmorrisj/Diffusion) repo (Wan 2.2 image-to-video):
-same one-notebook, Drive-persisted, tunnel-to-a-public-URL pattern, retargeted at
-Qwen-Image-Edit.
+same one-notebook, tunnel-to-a-public-URL pattern, retargeted at Qwen-Image-Edit.
+
+## Which notebook
+
+Two notebooks, same workflow and same UI — they differ only in where the weights live.
+
+| Notebook | Base weights (~28 GB) | LoRAs | Drive used |
+|---|---|---|---|
+| [`qwen_image_edit_comfyui_colab.ipynb`](qwen_image_edit_comfyui_colab.ipynb) | Google Drive, downloaded once | Drive | ~29 GB |
+| [`qwen_image_edit_comfyui_colab_hf.ipynb`](qwen_image_edit_comfyui_colab_hf.ipynb) | Hugging Face → runtime local disk, re-pulled each session | Drive | **LoRAs + images only** |
+
+The `_hf` variant trades ~3–7 min per session (`hf_transfer` pulls all 28 GB at
+100–300 MB/s) for ~28 GB of Drive quota. It is often no slower in practice, since
+reading 28 GB back out of the Drive FUSE mount is not fast either and can trip
+Drive's bandwidth quota. It also ships a *Reclaim Drive space* cell that deletes
+base weights left behind by the original notebook — never touching `loras/`.
+
+Either way your LoRAs, edits and input images stay in Drive.
 
 ## Quick start
 
-1. Open **[`qwen_image_edit_comfyui_colab.ipynb`](qwen_image_edit_comfyui_colab.ipynb)** in Google Colab.
+1. Open one of the notebooks above in Google Colab.
 2. `Runtime → Change runtime type → A100 GPU` (L4 also works; add `--lowvram` for smaller GPUs).
 3. Run the cells top to bottom:
    - **Step 1** verify GPU
    - **Step 2** mount Google Drive (`MyDrive/ComfyUI_Qwen`)
    - **Step 3** install ComfyUI (+ ComfyUI-Manager)
    - **Step 4** symlink Drive model/output/input folders into ComfyUI
-   - **Step 5** download the Qwen-Image-Edit models (~30 GB, first run only)
-   - **Step 5b** *(optional)* add your own LoRAs
+   - **Step 5** fetch the base models — cached in Drive after the first run, or
+     pulled from Hugging Face each session in the `_hf` notebook
+   - **Step 5b** LoRAs *(optional in the original; in `_hf` it also fetches the
+     Lightning LoRA into Drive)*
    - **Step 6** install the bundled workflow
    - **Step 7** launch ComfyUI + public URL
    - **Step 8** open the workflow and run your edit
@@ -28,7 +46,9 @@ Qwen-Image-Edit.
 
 ## Models
 
-All downloaded automatically in Step 5 (skipped if already in Drive):
+All downloaded automatically, and skipped if already present. The original
+notebook puts all four in Drive; the `_hf` notebook splits them — the first
+three come from Hugging Face in Step 5, the LoRA is kept in Drive by Step 5b.
 
 | Component | File | ComfyUI folder | Size |
 |---|---|---|---|
@@ -67,4 +87,6 @@ multiple `LoraLoaderModelOnly` nodes to chain LoRAs. The official edit-LoRA pack
 - **VRAM:** the fp8 edit model wants ≥16 GB free. A100 (40 GB) is comfortable,
   L4 (24 GB) works, T4 (16 GB) is borderline — add `--lowvram` in Step 7.
 - **Tunnels:** `colab` (default, no auth), `cloudflare`, or `ngrok`. See Step 7.
-- Models persist in Drive, so subsequent sessions skip the big download.
+- Models persist in Drive, so subsequent sessions skip the big download. In the
+  `_hf` notebook only the LoRAs persist; the base weights are re-pulled from
+  Hugging Face each session and never written to Drive.
